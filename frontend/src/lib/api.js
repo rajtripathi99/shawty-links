@@ -38,4 +38,7 @@ export const api = {
 
   getMyLinks: () =>
     request("/links/my"),
+
+  getOriginalUrl: (shortCode) =>
+    request(`/${shortCode}`),
 };

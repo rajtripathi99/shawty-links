@@ -9,7 +9,7 @@ export const createLink = async (req, res, next) => {
 
     const shortCode = await generateShortCode();
 
-    const shortUrl = `${process.env.BASE_URL}/${shortCode}`;
+    const shortUrl = `${process.env.FRONTEND_URL}/${shortCode}`;
 
     const qr = await generateQRCode(shortUrl);
 
@@ -37,7 +37,7 @@ export const getUserLinks = async (req, res, next) => {
 
     const linksWithQr = await Promise.all(
       links.map(async (link) => {
-        const shortUrl = `${process.env.BASE_URL}/${link.shortCode}`;
+        const shortUrl = `${process.env.FRONTEND_URL}/${link.shortCode}`;
         const qrCode = await generateQRCode(shortUrl);
         return { ...link.toObject(), shortUrl, qrCode };
       })
@@ -56,7 +56,10 @@ export const redirectLink = async (req, res, next) => {
     const link = await Link.findOne({ shortCode });
 
     if (!link) {
-      return sendResponse(res, 404, "Link not found");
+      if (req.accepts('json')) {
+        return sendResponse(res, 404, "Link not found");
+      }
+      return res.status(404).json({ success: false, message: "Link not found" });
     }
 
     link.clicks += 1;
@@ -64,6 +67,12 @@ export const redirectLink = async (req, res, next) => {
 
     await link.save();
 
+    // If the frontend is requesting this via API, send back the URL
+    if (req.xhr || req.headers.accept?.includes('json')) {
+      return sendResponse(res, 200, "Link found", { originalUrl: link.originalUrl });
+    }
+
+    // Direct browser visit
     res.redirect(link.originalUrl);
   } catch (error) {
     next(error);

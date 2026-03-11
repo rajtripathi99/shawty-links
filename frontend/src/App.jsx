@@ -7,6 +7,7 @@ import Landing from "@/pages/Landing";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import Dashboard from "@/pages/Dashboard";
+import Redirect from "@/pages/Redirect";
 
 const App = () => {
   return (
@@ -25,6 +26,7 @@ const App = () => {
               </ProtectedRoute>
             }
           />
+          <Route path="/:shortCode" element={<Redirect />} />
         </Routes>
         <Toaster />
       </AuthProvider>
