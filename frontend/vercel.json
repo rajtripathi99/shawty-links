@@ -1,8 +1,12 @@
 {
   "rewrites": [
     {
-      "source": "/:path((?!assets|favicon\\.ico|.*\\..*).*)",
-      "destination": "https://your-backend.onrender.com/:path"
+      "source": "/:slug([a-zA-Z0-9_-]{6,12})",
+      "destination": "https://shawty-links.onrender.com/:slug"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
