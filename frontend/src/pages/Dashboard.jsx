@@ -12,12 +12,20 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.getMyLinks().then((res) => {
-      if (res.success) {
-        setLinks(res.data);
-      }
-      setLoading(false);
-    });
+    const fetchLinks = () => {
+      api.getMyLinks().then((res) => {
+        if (res.success) {
+          setLinks(res.data);
+        }
+        setLoading(false);
+      });
+    };
+
+    fetchLinks(); // initial load
+
+    const interval = setInterval(fetchLinks, 10000); // poll every 10 seconds
+
+    return () => clearInterval(interval); // cleanup on unmount
   }, []);
 
   const handleLinkCreated = (newLink) => {

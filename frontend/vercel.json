@@ -1,6 +1,18 @@
 {
   "rewrites": [
     {
+      "source": "/dashboard",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/login",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/register",
+      "destination": "/index.html"
+    },
+    {
       "source": "/:slug([a-zA-Z0-9_-]{6,12})",
       "destination": "https://shawty-links.onrender.com/:slug"
     },
