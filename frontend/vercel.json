@@ -1,8 +1,8 @@
 {
   "rewrites": [
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "source": "/:path((?!assets|favicon\\.ico|.*\\..*).*)",
+      "destination": "https://your-backend.onrender.com/:path"
     }
   ]
 }
