@@ -16,8 +16,8 @@ const Redirect = () => {
         } else {
           setError(res.message || "Link not found");
         }
-      } catch (err) {
-        setError("Failed to redirect.");
+      } catch {
+        setError("Failed to redirect. Please try again.");
       }
     };
 

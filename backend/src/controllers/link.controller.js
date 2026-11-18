@@ -16,7 +16,8 @@ export const createLink = async (req, res, next) => {
     const link = await Link.create({
       originalUrl: url,
       shortCode,
-      userId: req.user.userId
+      userId: req.user.userId,
+      qrCode: qr
     });
 
     sendResponse(res, 201, "Link created", {
@@ -38,8 +39,15 @@ export const getUserLinks = async (req, res, next) => {
     const linksWithQr = await Promise.all(
       links.map(async (link) => {
         const shortUrl = `${process.env.FRONTEND_URL}/${link.shortCode}`;
-        const qrCode = await generateQRCode(shortUrl);
-        return { ...link.toObject(), shortUrl, qrCode };
+
+        // Reuse the stored QR code; only generate (and persist) for links
+        // created before the field existed.
+        if (!link.qrCode) {
+          link.qrCode = await generateQRCode(shortUrl);
+          await link.save();
+        }
+
+        return { ...link.toObject(), shortUrl };
       })
     );
 
@@ -49,30 +57,46 @@ export const getUserLinks = async (req, res, next) => {
   }
 };
 
-export const redirectLink = async (req, res, next) => {
-  try {
-    const { shortCode } = req.params;
+const findAndTrack = async (shortCode) => {
+  const link = await Link.findOne({ shortCode });
 
-    const link = await Link.findOne({ shortCode });
+  if (!link) {
+    return null;
+  }
+
+  link.clicks += 1;
+  link.lastVisited = new Date();
+
+  await link.save();
+
+  return link;
+};
+
+// JSON resolver used by the SPA redirect page. Kept separate from redirectLink
+// so fetch() never has to follow a 302 to a third-party origin.
+export const getLinkByCode = async (req, res, next) => {
+  try {
+    const link = await findAndTrack(req.params.shortCode);
 
     if (!link) {
-      if (req.accepts('json')) {
-        return sendResponse(res, 404, "Link not found");
-      }
-      return res.status(404).json({ success: false, message: "Link not found" });
+      return sendResponse(res, 404, "Link not found");
     }
 
-    link.clicks += 1;
-    link.lastVisited = new Date();
+    sendResponse(res, 200, "Link found", { originalUrl: link.originalUrl });
+  } catch (error) {
+    next(error);
+  }
+};
 
-    await link.save();
+export const redirectLink = async (req, res, next) => {
+  try {
+    const link = await findAndTrack(req.params.shortCode);
 
-    // If the frontend is requesting this via API, send back the URL
-    if (req.xhr || req.headers.accept?.includes('json')) {
-      return sendResponse(res, 200, "Link found", { originalUrl: link.originalUrl });
+    if (!link) {
+      return sendResponse(res, 404, "Link not found");
     }
 
-    // Direct browser visit
+    // Direct browser visit: let the browser follow the redirect natively.
     res.redirect(link.originalUrl);
   } catch (error) {
     next(error);

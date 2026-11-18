@@ -3,10 +3,19 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { sendResponse } from "../utils/response.js";
 
-const cookieOptions = {
-  httpOnly: true,
-  sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-  secure: process.env.NODE_ENV === "production"
+const TOKEN_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
+
+// Computed per request: process.env is only fully populated once config/env.js
+// has run, and reading it lazily avoids importing this module too early.
+export const cookieOptions = () => {
+  const isProduction = process.env.NODE_ENV === "production";
+
+  return {
+    httpOnly: true,
+    sameSite: isProduction ? "none" : "lax",
+    secure: isProduction,
+    maxAge: TOKEN_MAX_AGE
+  };
 };
 
 export const register = async (req, res, next) => {
@@ -57,7 +66,7 @@ export const login = async (req, res, next) => {
       { expiresIn: "7d" }
     );
 
-    res.cookie("token", token, cookieOptions);
+    res.cookie("token", token, cookieOptions());
 
     sendResponse(res, 200, "Login successful", {
       id: user._id,
@@ -69,7 +78,9 @@ export const login = async (req, res, next) => {
 };
 
 export const logout = (req, res) => {
-  res.clearCookie("token");
+  const { maxAge, ...clearOptions } = cookieOptions();
+
+  res.clearCookie("token", clearOptions);
   sendResponse(res, 200, "Logged out");
 };
 

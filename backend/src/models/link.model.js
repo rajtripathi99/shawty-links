@@ -23,9 +23,14 @@ const linkSchema = new mongoose.Schema(
       ref: "User"
     },
 
-    lastVisited: Date
+    lastVisited: Date,
+
+    // Cached so GET /api/links/my doesn't regenerate a QR code on every request.
+    qrCode: String
   },
   { timestamps: true }
 );
+
+linkSchema.index({ userId: 1, createdAt: -1 });
 
 export default mongoose.model("Link", linkSchema);

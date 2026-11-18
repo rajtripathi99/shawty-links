@@ -20,6 +20,8 @@ export const AuthProvider = ({ children }) => {
     const res = await api.login(email, password);
     if (res.success) {
       setUser(res.data);
+      // Don't let the initial /auth/me check keep the dashboard behind a spinner.
+      setLoading(false);
     }
     return res;
   };
