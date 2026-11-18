@@ -2,6 +2,7 @@ import Link from "../models/link.model.js";
 import { generateShortCode } from "../utils/generateShortCode.js";
 import { generateQRCode } from "../utils/qrCode.js";
 import { sendResponse } from "../utils/response.js";
+import { linkEvents } from "../utils/linkEvents.js";
 
 export const createLink = async (req, res, next) => {
   try {
@@ -69,7 +70,50 @@ const findAndTrack = async (shortCode) => {
 
   await link.save();
 
+  // Push the new count to any dashboard that's listening for this user.
+  linkEvents.emit("click", {
+    userId: String(link.userId),
+    linkId: String(link._id),
+    clicks: link.clicks,
+    lastVisited: link.lastVisited
+  });
+
   return link;
+};
+
+// Server-Sent Events stream: pushes click updates instead of the dashboard polling.
+export const streamLinkStats = (req, res) => {
+  res.set({
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache, no-transform",
+    Connection: "keep-alive",
+    "X-Accel-Buffering": "no"
+  });
+
+  res.flushHeaders();
+
+  const send = (event, data) => {
+    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  };
+
+  send("ready", { ok: true });
+
+  // Comment frames keep proxies and Render from closing an idle connection.
+  const heartbeat = setInterval(() => res.write(": ping\n\n"), 25000);
+
+  const onClick = (payload) => {
+    if (payload.userId === String(req.user.userId)) {
+      send("click", payload);
+    }
+  };
+
+  linkEvents.on("click", onClick);
+
+  req.on("close", () => {
+    clearInterval(heartbeat);
+    linkEvents.off("click", onClick);
+    res.end();
+  });
 };
 
 // JSON resolver used by the SPA redirect page. Kept separate from redirectLink

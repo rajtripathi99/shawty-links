@@ -1,5 +1,7 @@
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
+export const linksStreamUrl = `${API_BASE}/links/stream`;
+
 // Render's free tier sleeps when idle; the first request can take ~30-60s to
 // wake it. Fail with a clear message instead of hanging forever.
 const REQUEST_TIMEOUT_MS = 20000;

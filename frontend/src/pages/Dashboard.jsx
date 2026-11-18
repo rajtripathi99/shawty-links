@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { api } from "@/lib/api";
+import { api, linksStreamUrl } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import CreateLinkDialog from "@/components/CreateLinkDialog";
 import LinkCard from "@/components/LinkCard";
@@ -23,9 +23,30 @@ const Dashboard = () => {
 
     fetchLinks(); // initial load
 
-    const interval = setInterval(fetchLinks, 10000); // poll every 10 seconds
+    // Slow safety-net poll; live updates arrive over the SSE stream below.
+    const interval = setInterval(() => {
+      if (document.visibilityState === "visible") fetchLinks();
+    }, 30000);
 
-    return () => clearInterval(interval); // cleanup on unmount
+    const source = new EventSource(linksStreamUrl, { withCredentials: true });
+
+    source.addEventListener("click", (event) => {
+      const { linkId, clicks, lastVisited } = JSON.parse(event.data);
+
+      setLinks((prev) =>
+        prev.map((link) =>
+          link._id === linkId ? { ...link, clicks, lastVisited } : link
+        )
+      );
+    });
+
+    // Refetch whenever the stream reconnects, in case updates were missed while offline.
+    source.addEventListener("ready", fetchLinks);
+
+    return () => {
+      clearInterval(interval);
+      source.close();
+    };
   }, []);
 
   const handleLinkCreated = (newLink) => {

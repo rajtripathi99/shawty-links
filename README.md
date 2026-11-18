@@ -49,8 +49,20 @@ All responses use the envelope `{ success, message, data }`.
 | GET | `/api/auth/me` | cookie | Current user |
 | POST | `/api/links` | cookie | Create a short link (10/min/IP) |
 | GET | `/api/links/my` | cookie | List the user's links with `shortUrl` and `qrCode` |
+| GET | `/api/links/stream` | cookie | SSE stream of click updates (`event: click`) |
 | GET | `/:shortCode` | — | 302 redirect; JSON callers get the original URL |
 | GET | `/api/health` | — | Liveness/readiness probe: `200` when MongoDB is connected, `503` when degraded |
+
+## Realtime click updates
+
+The dashboard opens an `EventSource` to `/api/links/stream`. When any visitor hits
+a short link, the API increments the counter and pushes `{ linkId, clicks, lastVisited }`
+to every open dashboard belonging to that link's owner, so totals update without a refresh.
+
+Click events travel through an in-process `EventEmitter` (`backend/src/utils/linkEvents.js`),
+which is fine on a single instance. Running more than one API instance would need
+Redis/pub-sub so clicks reach clients connected to another instance. A 30s poll remains
+as a fallback if the stream drops.
 
 ## Deployment
 
